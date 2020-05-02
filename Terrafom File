@@ -1,0 +1,59 @@
+provider "azurerm" {
+    # The "feature" block is required for AzureRM provider 2.x. 
+    # If you're using version 1.x, the "features" block is not allowed.
+    version = "~>2.0"
+    features {}
+
+    subscription_id = "00000000-0000-0000-000000000000"
+    client_id       = "00000000-0000-0000-000000000000"
+    client_secret   = "00000000-0000-0000-000000000000"
+    tenant_id       = "00000000-0000-0000-000000000000"
+}
+
+resource "azurerm_resource_group" "stylelabs" {
+  name     = "stylelabs-resources"
+  location = "East US"
+}
+
+module "linuxservers" {
+  source                        = "Azure/compute/azurerm"
+  resource_group_name           = azurerm_resource_group.stylelabs.name
+  vm_hostname                   = "stylelabsvm"
+  public_ip_dns                 = ["stylelabsvmip", "stylelabsvmip1"]
+  nb_public_ip                  = 2
+  remote_port                   = "22"
+  nb_instances                  = 2
+  vm_os_publisher               = "Canonical"
+  vm_os_offer                   = "UbuntuServer"
+  vm_os_sku                     = "18.04-LTS"
+  vnet_subnet_id                = module.network.vnet_subnets[0]
+  boot_diagnostics              = true
+  delete_os_disk_on_termination = true
+  nb_data_disk                  = 2
+  data_disk_size_gb             = 64
+  data_sa_type                  = "Standard_LRS"
+  enable_ssh_key                = false
+  admin_username                = "stylelabs"
+  admin_password                = "Stylelabs!@#"
+  vm_size                       = "Standard_DS2_V2"
+  enable_accelerated_networking = true
+}
+
+ 
+
+module "network" {
+  source              = "Azure/network/azurerm"
+  version             = "3.0.1"
+  resource_group_name = azurerm_resource_group.stylelabs.name
+  subnet_prefixes     = ["10.0.1.0/24"]
+
+}
+
+output "linux_vm_public_name" {
+  value = module.linuxservers.public_ip_dns_name
+}
+
+output "linux_vm_private_ips" {
+  value = module.linuxservers.network_interface_private_ip
+}
+
